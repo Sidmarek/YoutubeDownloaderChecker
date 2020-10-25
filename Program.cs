@@ -17,41 +17,17 @@ namespace YoutubeDownloaderChecker
         public static string SaveDirPathYoutube { get => saveDirPathYoutube; set => saveDirPathYoutube = value; }
         static void Main(string[] args)
         {
-            bool endOfString = false; 
+            bool endOfString = false;
             string resultString;
             string tmpQuery = "https://www.youtube.com/results?search_query=koronavirus";
-
-            readConfig();
-
-            WebRequest request = WebRequest.Create(tmpQuery);
-
-            WebResponse response = request.GetResponse();
-            Stream dataStream = response.GetResponseStream();
-            StreamReader reader = new StreamReader(dataStream);
-
-            resultString = reader.ReadToEnd();
-            reader.Close();
-
             List<Tuple<int, int>> watchUrlLocations = new List<Tuple<int, int>>();
             int lastPosition = 0;
 
+            readConfig();
 
-            while (!endOfString)
-            {
-                int newPositionStart = resultString.IndexOf("/watch?", lastPosition);
+            resultString = GetResultHtml(tmpQuery);
 
-                if (newPositionStart != lastPosition  && newPositionStart != -1)
-                {
-                    lastPosition = newPositionStart;
-                    int newPositionEnd = resultString.IndexOf("\"", lastPosition);
-                    watchUrlLocations.Add( new Tuple<int, int>(newPositionStart,newPositionEnd));
-                    lastPosition = newPositionEnd;
-                }
-                else
-                {
-                    endOfString = true;
-                }
-            }
+            GetWatchUrlsFromString(ref endOfString, resultString, watchUrlLocations, ref lastPosition);
 
             List<string> watchUrls = new List<string>();
 
@@ -66,11 +42,7 @@ namespace YoutubeDownloaderChecker
                 var files = Directory.GetFiles(SaveDirPathYoutube).ToList();
                 if (files.Any(p => !p.Contains(watchUrlInTitle)))
                 {
-                    Process p = new Process();
-                    watchUrls.Add(youtubeWatchUrl);
-                    p.StartInfo.FileName = youTubeDLPath + "youtube-dl.exe";
-                    p.StartInfo.Arguments = youtubeWatchUrl + " --output " + SaveDirPathYoutube + watchUrlInTitle + "_" + "%(title)s.%(ext)s";
-                    p.Start();
+                    startYouTubeDLProcesses(watchUrls, youtubeWatchUrl, watchUrlInTitle);
                 }
                 else
                 {
@@ -79,6 +51,49 @@ namespace YoutubeDownloaderChecker
                 }
             }
 
+        }
+
+        private static void startYouTubeDLProcesses(List<string> watchUrls, string youtubeWatchUrl, string watchUrlInTitle)
+        {
+            Process p = new Process();
+            watchUrls.Add(youtubeWatchUrl);
+            p.StartInfo.FileName = youTubeDLPath + "youtube-dl.exe";
+            p.StartInfo.Arguments = youtubeWatchUrl + " --output " + SaveDirPathYoutube + watchUrlInTitle + "_" + "%(title)s.%(ext)s";
+            p.Start();
+        }
+
+        private static void GetWatchUrlsFromString(ref bool endOfString, string resultString, List<Tuple<int, int>> watchUrlLocations, ref int lastPosition)
+        {
+            while (!endOfString)
+            {
+                int newPositionStart = resultString.IndexOf("/watch?", lastPosition);
+
+                if (newPositionStart != lastPosition && newPositionStart != -1)
+                {
+                    lastPosition = newPositionStart;
+                    int newPositionEnd = resultString.IndexOf("\"", lastPosition);
+                    watchUrlLocations.Add(new Tuple<int, int>(newPositionStart, newPositionEnd));
+                    lastPosition = newPositionEnd;
+                }
+                else
+                {
+                    endOfString = true;
+                }
+            }
+        }
+
+        private static string GetResultHtml(string tmpQuery)
+        {
+            string resultString;
+            WebRequest request = WebRequest.Create(tmpQuery);
+
+            WebResponse response = request.GetResponse();
+            Stream dataStream = response.GetResponseStream();
+            StreamReader reader = new StreamReader(dataStream);
+
+            resultString = reader.ReadToEnd();
+            reader.Close();
+            return resultString;
         }
 
         private static void readConfig()
