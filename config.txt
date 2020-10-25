@@ -1,0 +1,3 @@
+YoutubeDirPath=C:\2_Personal\Youtube-Download\
+YoutubeDLPath=C:\2_Personal\
+Request=C:\2_Personal\Youtube-Download\Data\requestQueries.txt

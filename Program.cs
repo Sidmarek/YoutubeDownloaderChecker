@@ -10,30 +10,39 @@ namespace YoutubeDownloaderChecker
 {
     class Program
     {
+        const string youTubeQueryBase = "https://www.youtube.com/results?search_query=";
         private static string saveDirPathYoutube = string.Empty;
         private static string youTubeDLPath = string.Empty;
+        private static string requestDirPath = string.Empty;
+        private static String resultString = string.Empty;
 
         public static string YouTubeDLPath { get => youTubeDLPath; set => youTubeDLPath = value; }
         public static string SaveDirPathYoutube { get => saveDirPathYoutube; set => saveDirPathYoutube = value; }
+        public static string RequestDirPath { get => requestDirPath; set => requestDirPath = value; }
+        public static string ResultString { get => resultString; set => resultString = value; }
+
         static void Main(string[] args)
         {
             bool endOfString = false;
-            string resultString;
-            string tmpQuery = "https://www.youtube.com/results?search_query=koronavirus";
             List<Tuple<int, int>> watchUrlLocations = new List<Tuple<int, int>>();
             int lastPosition = 0;
 
             readConfig();
 
-            resultString = GetResultHtml(tmpQuery);
+            var lines = System.IO.File.ReadAllLines(requestDirPath);
 
-            GetWatchUrlsFromString(ref endOfString, resultString, watchUrlLocations, ref lastPosition);
+            foreach (string searchQuery in lines) 
+            {
+                ResultString += GetResultHtml(searchQuery);
+
+                GetWatchUrlsFromString(ref endOfString, ResultString, watchUrlLocations, ref lastPosition);
+            }
 
             List<string> watchUrls = new List<string>();
 
             foreach (var watchUrlLocation in watchUrlLocations)
             {
-                string watchUrl = resultString.Substring(watchUrlLocation.Item1, watchUrlLocation.Item2 - watchUrlLocation.Item1);
+                string watchUrl = ResultString.Substring(watchUrlLocation.Item1, watchUrlLocation.Item2 - watchUrlLocation.Item1);
                 string youtubeWatchUrl = "https://www.youtube.com/" + watchUrl;
                 string watchUrlInTitle = watchUrl.Replace('?', '-');
 
@@ -82,10 +91,10 @@ namespace YoutubeDownloaderChecker
             }
         }
 
-        private static string GetResultHtml(string tmpQuery)
+        private static string GetResultHtml(string query)
         {
             string resultString;
-            WebRequest request = WebRequest.Create(tmpQuery);
+            WebRequest request = WebRequest.Create(youTubeQueryBase + query);
 
             WebResponse response = request.GetResponse();
             Stream dataStream = response.GetResponseStream();
@@ -116,6 +125,10 @@ namespace YoutubeDownloaderChecker
                         if (splitedLine[0].Contains("Dir"))
                         {
                             SaveDirPathYoutube = splitedLine[1];
+                        }
+                        if (splitedLine[0].Contains("Request"))
+                        {
+                            requestDirPath = splitedLine[1];
                         }
                     }
                 }
