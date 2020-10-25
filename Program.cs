@@ -15,6 +15,7 @@ namespace YoutubeDownloaderChecker
         private static string youTubeDLPath = string.Empty;
         private static string requestDirPath = string.Empty;
         private static String resultString = string.Empty;
+        private static List<Process> processes = new List<Process>();
 
         public static string YouTubeDLPath { get => youTubeDLPath; set => youTubeDLPath = value; }
         public static string SaveDirPathYoutube { get => saveDirPathYoutube; set => saveDirPathYoutube = value; }
@@ -23,7 +24,7 @@ namespace YoutubeDownloaderChecker
 
         static void Main(string[] args)
         {
-            bool endOfString = false;
+            
             List<Tuple<int, int>> watchUrlLocations = new List<Tuple<int, int>>();
             int lastPosition = 0;
 
@@ -35,7 +36,7 @@ namespace YoutubeDownloaderChecker
             {
                 ResultString += GetResultHtml(searchQuery);
 
-                GetWatchUrlsFromString(ref endOfString, ResultString, watchUrlLocations, ref lastPosition);
+                GetWatchUrlsFromString(ResultString, watchUrlLocations, ref lastPosition);
             }
 
             List<string> watchUrls = new List<string>();
@@ -59,20 +60,32 @@ namespace YoutubeDownloaderChecker
                     System.Threading.Thread.Sleep(5000);
                 }
             }
+            while(processes.All(proc => proc.HasExited))
+            {
+                System.Threading.Thread.Sleep(5000);
+            }
 
+            //List<string> videoDescriptions = new List<string>();
+            //foreach(var proc in processes)
+            //{
+            //    videoDescriptions.Add(proc.StandardOutput.ReadToEnd());
+            //}
         }
 
         private static void startYouTubeDLProcesses(List<string> watchUrls, string youtubeWatchUrl, string watchUrlInTitle)
         {
-            Process p = new Process();
+            Process process = new Process();
             watchUrls.Add(youtubeWatchUrl);
-            p.StartInfo.FileName = youTubeDLPath + "youtube-dl.exe";
-            p.StartInfo.Arguments = youtubeWatchUrl + " --output " + SaveDirPathYoutube + watchUrlInTitle + "_" + "%(title)s.%(ext)s";
-            p.Start();
+            process.StartInfo.FileName = youTubeDLPath + "youtube-dl.exe";
+            process.StartInfo.Arguments = youtubeWatchUrl + " --write-info-json" +  " --output " + SaveDirPathYoutube + watchUrlInTitle + "_" + "%(title)s.%(ext)s";
+            process.Start();
+            processes.Add(process);
         }
 
-        private static void GetWatchUrlsFromString(ref bool endOfString, string resultString, List<Tuple<int, int>> watchUrlLocations, ref int lastPosition)
+        private static void GetWatchUrlsFromString(string resultString, List<Tuple<int, int>> watchUrlLocations, ref int lastPosition)
         {
+            bool endOfString = false;
+            lastPosition = 0;
             while (!endOfString)
             {
                 int newPositionStart = resultString.IndexOf("/watch?", lastPosition);
