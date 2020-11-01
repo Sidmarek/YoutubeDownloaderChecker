@@ -87,15 +87,49 @@ namespace YoutubeDownloaderChecker
             Process process = new Process();
             watchUrls.Add(youtubeWatchUrl);
             process.StartInfo.FileName = youTubeDLPath + "youtube-dl.exe";
-            process.StartInfo.Arguments = youtubeWatchUrl + " --write-info-json" + " --output " + SaveDirPathYoutube + /*watchUrlInTitle + "_" + */"%(title)s.%(ext)s";
-            //process.StartInfo.RedirectStandardOutput = true;
+            process.StartInfo.Arguments = youtubeWatchUrl + " --write-info-json" + " --dump-pages --output " + SaveDirPathYoutube + /*watchUrlInTitle + "_" + */"%(title)s.%(ext)s";
+            process.StartInfo.RedirectStandardOutput = true;
 
 
             bool started = process.Start();
             processes.Add(process);
 
-           //string filename = process.StandardOutput.ReadLine();
+            Metadata currentVideoMetadata = null;
+            //To get previouse base 64 dump
+            using (var db = new LiteDatabase(DataDirPath + "Database.db"))
+            {
+                var collection = db.GetCollection<Metadata>("Metadata");
+                var metadatas = collection.Query().Where(p => p.json == null).ToList();
+                if (collection.Query().Where(p => p.BaseVideoString != null && p.Url == youtubeWatchUrl).ToList().Count > 0)
+                {
+                    currentVideoMetadata = collection.Query().Where(p => p.BaseVideoString != null && p.Url == youtubeWatchUrl).First();
+                }
+            }
 
+            while (!process.StandardOutput.EndOfStream)
+            {
+                var baseLine = process.StandardOutput.ReadLine();
+
+                if (currentVideoMetadata == null)
+                    break;
+                if (currentVideoMetadata.BaseVideoString.Contains(baseLine))
+                {
+                    ///TODO versions are the same
+                }
+                else
+                {
+                    ///TODO new version
+                }
+
+            }
+
+            //Skip first line only console output
+            process.StandardOutput.ReadLine();
+            
+            //Skip second line and store int var it could be useful 
+            var urlInConsole = process.StandardOutput.ReadLine();
+            //Whole base64 video String
+            var wholeVieo = process.StandardOutput.ReadToEnd();
 
             var files = Directory.GetFiles(SaveDirPathYoutube, "*.json");
             List<string> tagsList = new List<string>();
@@ -130,6 +164,7 @@ namespace YoutubeDownloaderChecker
                         var description = items["description"].ToString();
                         var title = items["title"].ToString();
                         var uploader = items["uploader"].ToString();
+                        var url = items["webpage_url"].ToString();
                         var viewCount = items["view_count"];
 
                         var metadata = new Metadata()
@@ -140,6 +175,8 @@ namespace YoutubeDownloaderChecker
                             Tags = tagsList,
                             Categories = categoriesList,
                             Uploader = uploader,
+                            BaseVideoString = wholeVieo,
+                            Url = url,
                             Downloaded = DateTime.Now
                         };
 
@@ -156,7 +193,7 @@ namespace YoutubeDownloaderChecker
                             {
                                 collection.Insert(metadata);
                                 db.Commit();
-                                collection.EnsureIndex(x => x.Title);
+                                collection.EnsureIndex(x => x.Id);
                             }
                         }
                         //tagsList.Add(tags);
