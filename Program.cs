@@ -99,6 +99,7 @@ namespace YoutubeDownloaderChecker
 
             var files = Directory.GetFiles(SaveDirPathYoutube, "*.json");
             List<string> tagsList = new List<string>();
+            List<string> categoriesList = new List<string>();
 
             foreach ( var file in files) 
             {
@@ -109,6 +110,7 @@ namespace YoutubeDownloaderChecker
                         string json = r.ReadToEnd();
                         dynamic items = JsonConvert.DeserializeObject(json);
                         var tags = items["tags"];
+                        var categories = items["categories"];
 
                         if (tags.ToString() != string.Empty)
                         {
@@ -118,8 +120,16 @@ namespace YoutubeDownloaderChecker
                             }
                         }
 
+                        if (categories.ToString() != string.Empty)
+                        {
+                            foreach (var categorie in categories)
+                            {
+                                categoriesList.Add(categorie.ToString());
+                            }
+                        }
                         var description = items["description"].ToString();
                         var title = items["title"].ToString();
+                        var uploader = items["uploader"].ToString();
                         var viewCount = items["view_count"];
 
                         var metadata = new Metadata()
@@ -127,11 +137,15 @@ namespace YoutubeDownloaderChecker
                             Description = description,
                             Title = title,
                             ViewCount = viewCount,
-                            Tags = tagsList
+                            Tags = tagsList,
+                            Categories = categoriesList,
+                            Uploader = uploader,
+                            Downloaded = DateTime.Now
                         };
 
                         //Clean after one iteration
                         tagsList = new List<string>();
+                        categoriesList = new List<string>();
 
                         using (var db = new LiteDatabase(DataDirPath + "Database.db"))
                         {
