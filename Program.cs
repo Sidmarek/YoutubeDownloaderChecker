@@ -1,10 +1,15 @@
-﻿using Microsoft.VisualBasic.CompilerServices;
+﻿using LiteDB;
+using Microsoft.VisualBasic.CompilerServices;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Text;
+using System.Threading;
 
 namespace YoutubeDownloaderChecker
 {
@@ -16,15 +21,17 @@ namespace YoutubeDownloaderChecker
         private static string requestDirPath = string.Empty;
         private static String resultString = string.Empty;
         private static List<Process> processes = new List<Process>();
+        private static string dataDirPath = string.Empty;
 
         public static string YouTubeDLPath { get => youTubeDLPath; set => youTubeDLPath = value; }
         public static string SaveDirPathYoutube { get => saveDirPathYoutube; set => saveDirPathYoutube = value; }
         public static string RequestDirPath { get => requestDirPath; set => requestDirPath = value; }
         public static string ResultString { get => resultString; set => resultString = value; }
+        public static string DataDirPath { get => dataDirPath; set => dataDirPath = value; }
 
         static void Main(string[] args)
         {
-            
+
             List<Tuple<int, int>> watchUrlLocations = new List<Tuple<int, int>>();
             int lastPosition = 0;
 
@@ -32,7 +39,7 @@ namespace YoutubeDownloaderChecker
 
             var lines = System.IO.File.ReadAllLines(requestDirPath);
 
-            foreach (string searchQuery in lines) 
+            foreach (string searchQuery in lines)
             {
                 ResultString += GetResultHtml(searchQuery);
 
@@ -44,42 +51,98 @@ namespace YoutubeDownloaderChecker
             foreach (var watchUrlLocation in watchUrlLocations)
             {
                 string watchUrl = ResultString.Substring(watchUrlLocation.Item1, watchUrlLocation.Item2 - watchUrlLocation.Item1);
-                string youtubeWatchUrl = "https://www.youtube.com/" + watchUrl;
-                string watchUrlInTitle = watchUrl.Replace('?', '-');
+                string youtubeWatchUrl = "https://www.youtube.com" + watchUrl;
+                ///string watchUrlInTitle = watchUrl.Replace('?', '-');
 
                 Console.WriteLine(youtubeWatchUrl);
 
-                var files = Directory.GetFiles(SaveDirPathYoutube).ToList();
-                if (files.Any(p => !p.Contains(watchUrlInTitle)))
+                var urls = File.ReadLines(DataDirPath + "watchUrls.txt").ToList();
+                if (urls.Any(p => !p.Contains(youtubeWatchUrl)))
                 {
-                    startYouTubeDLProcesses(watchUrls, youtubeWatchUrl, watchUrlInTitle);
+                    startYouTubeDLProcess(watchUrls, youtubeWatchUrl);
                 }
                 else
                 {
                     Console.WriteLine("Video has been already downloaded");
                     System.Threading.Thread.Sleep(5000);
                 }
-            }
-            while(processes.All(proc => proc.HasExited))
-            {
-                System.Threading.Thread.Sleep(5000);
+
+                //Adds watchUrl into list
+                watchUrls.Add(youtubeWatchUrl);
             }
 
-            //List<string> videoDescriptions = new List<string>();
-            //foreach(var proc in processes)
-            //{
-            //    videoDescriptions.Add(proc.StandardOutput.ReadToEnd());
-            //}
+
+            using (System.IO.StreamWriter file = new System.IO.StreamWriter(DataDirPath + "watchUrls.txt"))
+            {
+                foreach (string youtubeWatchUrl in watchUrls)
+                {
+                    file.WriteLine(youtubeWatchUrl);
+                }
+            }
+
         }
 
-        private static void startYouTubeDLProcesses(List<string> watchUrls, string youtubeWatchUrl, string watchUrlInTitle)
+        private static void startYouTubeDLProcess(List<string> watchUrls, string youtubeWatchUrl)
         {
             Process process = new Process();
             watchUrls.Add(youtubeWatchUrl);
             process.StartInfo.FileName = youTubeDLPath + "youtube-dl.exe";
-            process.StartInfo.Arguments = youtubeWatchUrl + " --write-info-json" +  " --output " + SaveDirPathYoutube + watchUrlInTitle + "_" + "%(title)s.%(ext)s";
-            process.Start();
+            process.StartInfo.Arguments = youtubeWatchUrl + " --write-info-json" + " --get-filename " + SaveDirPathYoutube + /*watchUrlInTitle + "_" + */"%(title)s.%(ext)s";
+            process.StartInfo.RedirectStandardOutput = true;
+
+
+            bool started = process.Start();
             processes.Add(process);
+
+           //string filename = process.StandardOutput.ReadLine();
+
+
+            var files = Directory.GetFiles(SaveDirPathYoutube, "*.json");
+            List<string> tagsList = new List<string>();
+
+            foreach ( var file in files) 
+            {
+                try
+                {
+                    using (StreamReader r = new StreamReader(file))
+                    {
+                        string json = r.ReadToEnd();
+                        dynamic items = JsonConvert.DeserializeObject(json);
+                        var tags = items["tags"];
+                        var description = items["description"].ToString();
+                        var title = items["title"].ToString();
+                        var viewCount = items["view_count"];
+
+                        var metadata = new Metadata()
+                        {
+                            Description = description,
+                            Title = title,
+                            ViewCount = viewCount
+                        };
+
+
+                        using (var db = new LiteDatabase(DataDirPath + "Database.db"))
+                        {
+                            var collection = db.GetCollection<Metadata>("Metadata");
+                            collection.Query().Where(p => p.Tags == null).ToList();
+                            if (collection.Query().Where(p => p.Title == metadata.Title).ToList() != null)
+                            {
+                                collection.Insert(metadata);
+                                db.Commit();
+                                collection.EnsureIndex(x => x.Title);
+                            }
+                        }
+                        //tagsList.Add(tags);
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("Json file cannot be read named: " + file + ". Ended with error " + e.Message);
+                }
+
+            }
+
+            // do something with line
         }
 
         private static void GetWatchUrlsFromString(string resultString, List<Tuple<int, int>> watchUrlLocations, ref int lastPosition)
@@ -141,7 +204,11 @@ namespace YoutubeDownloaderChecker
                         }
                         if (splitedLine[0].Contains("Request"))
                         {
-                            requestDirPath = splitedLine[1];
+                            RequestDirPath = splitedLine[1];
+                        }
+                        if (splitedLine[0].Contains("Data"))
+                        {
+                            DataDirPath = splitedLine[1];
                         }
                     }
                 }
