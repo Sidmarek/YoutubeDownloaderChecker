@@ -87,8 +87,8 @@ namespace YoutubeDownloaderChecker
             Process process = new Process();
             watchUrls.Add(youtubeWatchUrl);
             process.StartInfo.FileName = youTubeDLPath + "youtube-dl.exe";
-            process.StartInfo.Arguments = youtubeWatchUrl + " --write-info-json" + " --get-filename " + SaveDirPathYoutube + /*watchUrlInTitle + "_" + */"%(title)s.%(ext)s";
-            process.StartInfo.RedirectStandardOutput = true;
+            process.StartInfo.Arguments = youtubeWatchUrl + " --write-info-json" + " --output " + SaveDirPathYoutube + /*watchUrlInTitle + "_" + */"%(title)s.%(ext)s";
+            //process.StartInfo.RedirectStandardOutput = true;
 
 
             bool started = process.Start();
@@ -109,6 +109,15 @@ namespace YoutubeDownloaderChecker
                         string json = r.ReadToEnd();
                         dynamic items = JsonConvert.DeserializeObject(json);
                         var tags = items["tags"];
+
+                        if (tags.ToString() != string.Empty)
+                        {
+                            foreach (var tag in tags)
+                            {
+                                tagsList.Add(tag.ToString());
+                            }
+                        }
+
                         var description = items["description"].ToString();
                         var title = items["title"].ToString();
                         var viewCount = items["view_count"];
@@ -117,15 +126,19 @@ namespace YoutubeDownloaderChecker
                         {
                             Description = description,
                             Title = title,
-                            ViewCount = viewCount
+                            ViewCount = viewCount,
+                            Tags = tagsList
                         };
 
+                        //Clean after one iteration
+                        tagsList = new List<string>();
 
                         using (var db = new LiteDatabase(DataDirPath + "Database.db"))
                         {
                             var collection = db.GetCollection<Metadata>("Metadata");
-                            collection.Query().Where(p => p.Tags == null).ToList();
-                            if (collection.Query().Where(p => p.Title == metadata.Title).ToList() != null)
+                            var test = collection.Query().Where(p => p.json == null).ToList();
+                            var testing = collection.Query().Where(p => p.Title == metadata.Title).ToList();
+                            if (testing.Count == 0)
                             {
                                 collection.Insert(metadata);
                                 db.Commit();
