@@ -3,6 +3,9 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp3.1</TargetFramework>
+    <Version>1.1.0</Version>
+    <PackageProjectUrl>https://github.com/Sidmarek/YoutubeDownloaderChecker/</PackageProjectUrl>
+    <Description>Youtube downloader and checker of new verions. Input is txt file where you should write all yours requestedUrls.</Description>
   </PropertyGroup>
 
   <ItemGroup>
