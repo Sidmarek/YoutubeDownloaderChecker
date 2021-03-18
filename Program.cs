@@ -16,7 +16,8 @@ namespace YoutubeDownloaderChecker
 {
     class Program
     {
-        const string youTubeQueryBase = "https://www.youtube.com/results?search_query=";
+        const string youTubeQueryBase = "https://www.facebook.com/search/videos/?q=";
+        //const string youTubeQueryBase = "https://www.youtube.com/results?search_query=";
         private static string saveDirPathYoutube = string.Empty;
         private static string youTubeDLPath = string.Empty;
         private static string requestDirPath = string.Empty;
@@ -353,7 +354,10 @@ namespace YoutubeDownloaderChecker
             WebRequest request = WebRequest.Create(youTubeQueryBase + query);
 
             WebResponse response = request.GetResponse();
-            Stream dataStream = response.GetResponseStream();
+            WebRequest requestOfResponse = WebRequest.Create(response.ResponseUri);
+            WebResponse responsefResponse = requestOfResponse.GetResponse();
+            response.Close();
+            Stream dataStream = responsefResponse.GetResponseStream();
             StreamReader reader = new StreamReader(dataStream);
 
             resultString = reader.ReadToEnd();
