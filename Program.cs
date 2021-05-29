@@ -1,6 +1,7 @@
 ﻿using LiteDB;
 using Microsoft.VisualBasic.CompilerServices;
 using Newtonsoft.Json;
+using OpenQA.Selenium.Chrome;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -33,6 +34,21 @@ namespace YoutubeDownloaderChecker
 
         static void Main(string[] args)
         {
+
+            var chromeDriver = new ChromeDriver();
+            chromeDriver.Url = "https://facebook.com";
+            var cookiesAccept = chromeDriver.FindElementsByTagName("button");
+            cookiesAccept[1].Click();
+            var cookiesSecondAccept = chromeDriver.FindElementsByTagName("button");
+            cookiesSecondAccept[4].Click();
+            var emailElement = chromeDriver.FindElementById("email");
+            emailElement.Click();
+            emailElement.SendKeys($"");
+            var passwordElement = chromeDriver.FindElementById("pass");
+            passwordElement.Click();
+            passwordElement.SendKeys("");
+            var loginButtons = chromeDriver.FindElementsByTagName("button");
+            loginButtons[0].Click();
 
             List<Tuple<string, int, int>> watchUrlLocations = new List<Tuple<string, int, int>>();
             List<Tuple<string, string>> watchUrls = new List<Tuple<string, string>>();
