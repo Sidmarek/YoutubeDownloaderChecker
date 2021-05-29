@@ -1,5 +1,6 @@
-﻿using LiteDB;
-using Microsoft.VisualBasic.CompilerServices;
+﻿using CefSharp;
+using CefSharp.OffScreen;
+using LiteDB;
 using Newtonsoft.Json;
 using OpenQA.Selenium.Chrome;
 using System;
@@ -17,8 +18,8 @@ namespace YoutubeDownloaderChecker
 {
     class Program
     {
-        const string youTubeQueryBase = "https://www.facebook.com/search/videos/?q=";
-        //const string youTubeQueryBase = "https://www.youtube.com/results?search_query=";
+        const string facebookUrlBase = "https://www.facebook.com/search/videos/?q=";
+        const string youTubeQueryBase = "https://www.youtube.com/results?search_query=";
         private static string saveDirPathYoutube = string.Empty;
         private static string youTubeDLPath = string.Empty;
         private static string requestDirPath = string.Empty;
@@ -31,6 +32,8 @@ namespace YoutubeDownloaderChecker
         public static string RequestDirPath { get => requestDirPath; set => requestDirPath = value; }
         public static string ResultString { get => resultString; set => resultString = value; }
         public static string DataDirPath { get => dataDirPath; set => dataDirPath = value; }
+        private static string[] RequestQueries;
+        private static ChromiumWebBrowser browser;
 
         static void Main(string[] args)
         {
@@ -55,26 +58,41 @@ namespace YoutubeDownloaderChecker
             int lastPosition = 0;
 
             readConfig();
-
+            
             var requestQueries = System.IO.File.ReadAllLines(requestDirPath);
+            RequestQueries = requestQueries;
+
+            var settings = new CefSettings()
+            {
+                //By default CefSharp will use an in-memory cache, you need to specify a Cache Folder to persist data
+                CachePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CefSharp\\Cache")
+            };
+
+            //Perform dependency check to make sure all relevant resources are in our output directory.
+            Cef.Initialize(settings, performDependencyCheck: true, browserProcessHandler: null);
+
+            //// Create the offscreen Chromium browser.
+            //browser = new ChromiumWebBrowser("https://www.facebook.com/");
+            //browser.LoadingStateChanged += BrowserLoadingStateChanged;
 
             foreach (string searchQuery in requestQueries)
             {
-                string queryHtmlString = GetResultHtml(searchQuery);
+                GetFacebookHtmlAsync(facebookUrlBase + searchQuery);
 
-                var newLocations = GetWatchUrlsFromString(queryHtmlString, ref lastPosition);
-                foreach (var newLocation in newLocations)
-                {
-                    //var newItem = new Tuple<string, int, int>(searchQuery, newLocation.Item2, newLocation.Item3);
-                    //watchUrlLocations.Add(newItem);
-                    string watchUrl = queryHtmlString.Substring(newLocation.Item1, newLocation.Item2 - newLocation.Item1);
-                    string youtubeWatchUrl = "https://www.youtube.com" + watchUrl;
+                //string queryHtmlString = GetResultHtml(searchQuery);
+                //var newLocations = GetWatchUrlsFromString(queryHtmlString, ref lastPosition);
+                //foreach (var newLocation in newLocations)
+                //{
+                //    //var newItem = new Tuple<string, int, int>(searchQuery, newLocation.Item2, newLocation.Item3);
+                //    //watchUrlLocations.Add(newItem);
+                //    string watchUrl = queryHtmlString.Substring(newLocation.Item1, newLocation.Item2 - newLocation.Item1);
+                //    string youtubeWatchUrl = "https://www.youtube.com" + watchUrl;
 
-                    Console.WriteLine(youtubeWatchUrl);
-                    watchUrls.Add(new Tuple<string, string>(searchQuery, youtubeWatchUrl));
-                }
+                //    //Console.WriteLine(youtubeWatchUrl);
+                //    watchUrls.Add(new Tuple<string, string>(searchQuery, youtubeWatchUrl));
+                //}
             }
-
+            Console.ReadKey();
 
             foreach (var watchUrl in watchUrls)
             {
@@ -118,7 +136,46 @@ namespace YoutubeDownloaderChecker
 
             }
 
-            Console.WriteLine("All videos has been successfulyy downloaded and checked ");
+            Console.WriteLine("All videos has been successfuly downloaded and checked ");
+        }
+
+        private static async void GetFacebookHtmlAsync(string url)
+        {
+            //Reduce rendering speed to one frame per second, tweak this to whatever suites you best
+            using (var browser = new ChromiumWebBrowser(url))
+            {
+                //await LoadPageAsync(browser);
+                browser.LoadUrlWithPostData
+                //Get the browser source
+                var source = await browser.GetSourceAsync();
+
+                Console.WriteLine(source);
+
+                //Allow for a little delay before attempting to `Dispose` of the ChromiumWebBrowser,
+                // some of the background IPC messages need a few extra ticks to compelte,
+                // if you perform some more complex operations this is likely not required.
+                await Task.Delay(10);
+            }
+        }
+
+        public static Task LoadPageAsync(IWebBrowser browser)
+        {
+            var tcs = new TaskCompletionSource<bool>();
+
+            EventHandler<LoadingStateChangedEventArgs> handler = null;
+            handler = (sender, args) =>
+            {
+                //Wait for while page to finish loading not just the first frame
+                if (!args.IsLoading)
+                {
+                    browser.LoadingStateChanged -= handler;
+                    tcs.TrySetResult(true);
+                }
+            };
+
+            browser.LoadingStateChanged += handler;
+
+            return tcs.Task;
         }
 
         private static void UpdateOrCreateMetadataFromJsonToLcalDB(Metadata metadata)
