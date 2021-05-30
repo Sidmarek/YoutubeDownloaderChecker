@@ -20,6 +20,9 @@ namespace YoutubeDownloaderChecker
     {
         const string facebookUrlBase = "https://www.facebook.com/search/videos/?q=";
         const string youTubeQueryBase = "https://www.youtube.com/results?search_query=";
+        const string youtubeSearchQuery = "/watch?v=";
+        const string facebookSearchQuery = @"watch\/?ref=search&v=";
+
         private static string saveDirPathYoutube = string.Empty;
         private static string youTubeDLPath = string.Empty;
         private static string requestDirPath = string.Empty;
@@ -37,22 +40,6 @@ namespace YoutubeDownloaderChecker
 
         static void Main(string[] args)
         {
-
-            var chromeDriver = new ChromeDriver();
-            chromeDriver.Url = "https://facebook.com";
-            var cookiesAccept = chromeDriver.FindElementsByTagName("button");
-            cookiesAccept[1].Click();
-            var cookiesSecondAccept = chromeDriver.FindElementsByTagName("button");
-            cookiesSecondAccept[4].Click();
-            var emailElement = chromeDriver.FindElementById("email");
-            emailElement.Click();
-            emailElement.SendKeys($"");
-            var passwordElement = chromeDriver.FindElementById("pass");
-            passwordElement.Click();
-            passwordElement.SendKeys("");
-            var loginButtons = chromeDriver.FindElementsByTagName("button");
-            loginButtons[0].Click();
-
             List<Tuple<string, int, int>> watchUrlLocations = new List<Tuple<string, int, int>>();
             List<Tuple<string, string>> watchUrls = new List<Tuple<string, string>>();
             int lastPosition = 0;
@@ -61,36 +48,28 @@ namespace YoutubeDownloaderChecker
             
             var requestQueries = System.IO.File.ReadAllLines(requestDirPath);
             RequestQueries = requestQueries;
-
-            var settings = new CefSettings()
-            {
-                //By default CefSharp will use an in-memory cache, you need to specify a Cache Folder to persist data
-                CachePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CefSharp\\Cache")
-            };
-
-            //Perform dependency check to make sure all relevant resources are in our output directory.
-            Cef.Initialize(settings, performDependencyCheck: true, browserProcessHandler: null);
-
-            //// Create the offscreen Chromium browser.
-            //browser = new ChromiumWebBrowser("https://www.facebook.com/");
-            //browser.LoadingStateChanged += BrowserLoadingStateChanged;
+            
+            //Logs into the facebook via ChromeDriver
+            var chromeDriver = new ChromeDriver();
+            LoginIntoFacebook(chromeDriver);
 
             foreach (string searchQuery in requestQueries)
             {
-                GetFacebookHtmlAsync(facebookUrlBase + searchQuery);
-
+                var facebookHtmlString = GetFacebookHtmlAsync(chromeDriver,facebookUrlBase + searchQuery).Result;
+                var videosLocationInString = GetWatchUrlsFromString(facebookHtmlString, facebookSearchQuery,ref lastPosition);
                 //string queryHtmlString = GetResultHtml(searchQuery);
                 //var newLocations = GetWatchUrlsFromString(queryHtmlString, ref lastPosition);
-                //foreach (var newLocation in newLocations)
-                //{
-                //    //var newItem = new Tuple<string, int, int>(searchQuery, newLocation.Item2, newLocation.Item3);
-                //    //watchUrlLocations.Add(newItem);
-                //    string watchUrl = queryHtmlString.Substring(newLocation.Item1, newLocation.Item2 - newLocation.Item1);
-                //    string youtubeWatchUrl = "https://www.youtube.com" + watchUrl;
+                foreach (var newLocation in videosLocationInString)
+                {
+                    //var newItem = new Tuple<string, int, int>(searchQuery, newLocation.Item2, newLocation.Item3);
+                    //watchUrlLocations.Add(newItem);
+                    string watchUrl = facebookHtmlString.Substring(newLocation.Item1, newLocation.Item2 - newLocation.Item1);
+                    //string youtubeWatchUrl = "https://www.youtube.com" + watchUrl;
+                    string facebookWatchUrl = "https://www.facebook.com/" + watchUrl + "&q=" + searchQuery;
 
-                //    //Console.WriteLine(youtubeWatchUrl);
-                //    watchUrls.Add(new Tuple<string, string>(searchQuery, youtubeWatchUrl));
-                //}
+                    //Console.WriteLine(youtubeWatchUrl);
+                    watchUrls.Add(new Tuple<string, string>(searchQuery, facebookWatchUrl));
+                }
             }
             Console.ReadKey();
 
@@ -139,23 +118,27 @@ namespace YoutubeDownloaderChecker
             Console.WriteLine("All videos has been successfuly downloaded and checked ");
         }
 
-        private static async void GetFacebookHtmlAsync(string url)
+        private static void LoginIntoFacebook(ChromeDriver executeDriver)
         {
-            //Reduce rendering speed to one frame per second, tweak this to whatever suites you best
-            using (var browser = new ChromiumWebBrowser(url))
-            {
-                //await LoadPageAsync(browser);
-                browser.LoadUrlWithPostData
-                //Get the browser source
-                var source = await browser.GetSourceAsync();
+            executeDriver.Url = "https://facebook.com";
+            var cookiesAccept = executeDriver.FindElementsByTagName("button");
+            cookiesAccept[1].Click();
+            var cookiesSecondAccept = executeDriver.FindElementsByTagName("button");
+            cookiesSecondAccept[4].Click();
+            var emailElement = executeDriver.FindElementById("email");
+            emailElement.Click();
+            emailElement.SendKeys($"chodec.marek@gmail.com");
+            var passwordElement = executeDriver.FindElementById("pass");
+            passwordElement.Click();
+            passwordElement.SendKeys("Vahrai1EVee");
+            var loginButtons = executeDriver.FindElementsByTagName("button");
+            loginButtons[0].Click();
+        }
 
-                Console.WriteLine(source);
-
-                //Allow for a little delay before attempting to `Dispose` of the ChromiumWebBrowser,
-                // some of the background IPC messages need a few extra ticks to compelte,
-                // if you perform some more complex operations this is likely not required.
-                await Task.Delay(10);
-            }
+        private static async Task<string> GetFacebookHtmlAsync(ChromeDriver chromeDriver, string url)
+        {
+            chromeDriver.Url = url;
+            return chromeDriver.PageSource;
         }
 
         public static Task LoadPageAsync(IWebBrowser browser)
@@ -394,7 +377,7 @@ namespace YoutubeDownloaderChecker
             return true;
         }
 
-        private static List<Tuple<int, int>> GetWatchUrlsFromString(string resultString, ref int lastPosition)
+        private static List<Tuple<int, int>> GetWatchUrlsFromString(string resultString, string searchPattern ref int lastPosition)
         {
             List<Tuple<int, int>> watchUrlLocations = new List<Tuple<int, int>>();
 
@@ -403,12 +386,12 @@ namespace YoutubeDownloaderChecker
 
             while (!endOfString)
             {
-                int newPositionStart = resultString.IndexOf("/watch?v=", lastPosition);
+                int newPositionStart = resultString.IndexOf(searchPattern, lastPosition);
 
                 if (newPositionStart != lastPosition && newPositionStart != -1)
                 {
                     lastPosition = newPositionStart;
-                    int newPositionEnd = resultString.IndexOf("\"", lastPosition);
+                    int newPositionEnd = resultString.IndexOf("&q=", lastPosition);
                     watchUrlLocations.Add(new Tuple<int, int>(newPositionStart, newPositionEnd));
                     lastPosition = newPositionEnd;
                 }
