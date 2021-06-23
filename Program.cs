@@ -21,7 +21,9 @@ namespace YoutubeDownloaderChecker
         const string facebookUrlBase = "https://www.facebook.com/search/videos/?q=";
         const string youTubeQueryBase = "https://www.youtube.com/results?search_query=";
         const string youtubeSearchQuery = "/watch?v=";
-        const string facebookSearchQuery = @"watch\/?ref=search&v=";
+        const string facebookSearchQuery = @"/watch/live/?v=";
+        const string facebookEndPatern = @"&";
+        //const string facebookSearchQuery = @"watch\/?ref=search&v=";
 
         private static string saveDirPathYoutube = string.Empty;
         private static string youTubeDLPath = string.Empty;
@@ -56,7 +58,7 @@ namespace YoutubeDownloaderChecker
             foreach (string searchQuery in requestQueries)
             {
                 var facebookHtmlString = GetFacebookHtmlAsync(chromeDriver,facebookUrlBase + searchQuery).Result;
-                var videosLocationInString = GetWatchUrlsFromString(facebookHtmlString, facebookSearchQuery,ref lastPosition);
+                var videosLocationInString = GetWatchUrlsFromString(facebookHtmlString, facebookSearchQuery, facebookEndPatern, ref lastPosition);
                 //string queryHtmlString = GetResultHtml(searchQuery);
                 //var newLocations = GetWatchUrlsFromString(queryHtmlString, ref lastPosition);
                 foreach (var newLocation in videosLocationInString)
@@ -65,7 +67,7 @@ namespace YoutubeDownloaderChecker
                     //watchUrlLocations.Add(newItem);
                     string watchUrl = facebookHtmlString.Substring(newLocation.Item1, newLocation.Item2 - newLocation.Item1);
                     //string youtubeWatchUrl = "https://www.youtube.com" + watchUrl;
-                    string facebookWatchUrl = "https://www.facebook.com/" + watchUrl + "&q=" + searchQuery;
+                    string facebookWatchUrl = "https://www.facebook.com" + watchUrl /*"&q=" + searchQuery*/;
 
                     //Console.WriteLine(youtubeWatchUrl);
                     watchUrls.Add(new Tuple<string, string>(searchQuery, facebookWatchUrl));
@@ -350,8 +352,6 @@ namespace YoutubeDownloaderChecker
             //Whole base64 video String
             var wholeVieo = process.StandardOutput.ReadToEndAsync();
 
-           
-
             return process;
         }
 
@@ -377,7 +377,7 @@ namespace YoutubeDownloaderChecker
             return true;
         }
 
-        private static List<Tuple<int, int>> GetWatchUrlsFromString(string resultString, string searchPattern ref int lastPosition)
+        private static List<Tuple<int, int>> GetWatchUrlsFromString(string resultString, string searchPattern, string endPattern, ref int lastPosition)
         {
             List<Tuple<int, int>> watchUrlLocations = new List<Tuple<int, int>>();
 
@@ -391,7 +391,8 @@ namespace YoutubeDownloaderChecker
                 if (newPositionStart != lastPosition && newPositionStart != -1)
                 {
                     lastPosition = newPositionStart;
-                    int newPositionEnd = resultString.IndexOf("&q=", lastPosition);
+                    //int newPositionEnd = resultString.IndexOf("&q=", lastPosition);
+                    int newPositionEnd = resultString.IndexOf(endPattern, lastPosition);
                     watchUrlLocations.Add(new Tuple<int, int>(newPositionStart, newPositionEnd));
                     lastPosition = newPositionEnd;
                 }
