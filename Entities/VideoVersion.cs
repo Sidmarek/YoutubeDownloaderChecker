@@ -1,9 +1,7 @@
 ﻿using LiteDB;
 using System;
-using System.Collections.Generic;
-using System.Text;
 
-namespace YoutubeDownloaderChecker
+namespace YoutubeDownloaderChecker.Entities
 {
     public class VideoVersion
     {
