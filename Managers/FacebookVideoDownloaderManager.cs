@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using YoutubeDownloaderChecker.Entities;
 using YoutubeDownloaderChecker.Helpers;
 
@@ -19,18 +20,7 @@ namespace YoutubeDownloaderChecker.Managers
         const string facebookEndPatern = @"&";
         //const string facebookSearchQuery = @"watch\/?ref=search&v=";
 
-        private static string saveDirPathYoutube = string.Empty;
-        private static string youTubeDLPath = string.Empty;
-        private static string requestDirPath = string.Empty;
-        private static String resultString = string.Empty;
         private static List<Process> processes = new List<Process>();
-        private static string dataDirPath = string.Empty;
-
-        public static string YouTubeDLPath { get => youTubeDLPath; set => youTubeDLPath = value; }
-        public static string SaveDirPathYoutube { get => saveDirPathYoutube; set => saveDirPathYoutube = value; }
-        public static string RequestDirPath { get => requestDirPath; set => requestDirPath = value; }
-        public static string ResultString { get => resultString; set => resultString = value; }
-        public static string DataDirPath { get => dataDirPath; set => dataDirPath = value; }
 
         private static string[] RequestQueries;
         private static ChromiumWebBrowser browser;
@@ -41,9 +31,9 @@ namespace YoutubeDownloaderChecker.Managers
             List<Tuple<string, string>> watchUrls = new List<Tuple<string, string>>();
             int lastPosition = 0;
 
-            ReadConfigHelper.ReadConfig(youTubeDLPath, SaveDirPathYoutube, RequestDirPath, DataDirPath);
+            var config = ReadConfigHelper.ReadConfig("config.txt");
 
-            var requestQueries = File.ReadAllLines(requestDirPath);
+            var requestQueries = File.ReadAllLines(config.RequestDirPath);
             RequestQueries = requestQueries;
 
             //Logs into the facebook via ChromeDriver
@@ -73,7 +63,7 @@ namespace YoutubeDownloaderChecker.Managers
             foreach (var watchUrl in watchUrls)
             {
                 var process = StartYouTubeDLProcessHelper.StartYouTubeDLProcess(
-                    watchUrl.Item1, watchUrl.Item2, youTubeDLPath, saveDirPathYoutube, dataDirPath);
+                    watchUrl.Item1, watchUrl.Item2, config.YouTubeDLPath, config.SaveDirPathYoutube, config.DataDirPath);
                 processes.Add(process);
             }
 
@@ -81,7 +71,7 @@ namespace YoutubeDownloaderChecker.Managers
 
             foreach (var searchQueryString in requestQueries)
             {
-                files.AddRange(FindFilesPerSeachQueryHelper.FindFilesPerSearchQuery(searchQueryString, saveDirPathYoutube));
+                files.AddRange(FindFilesPerSeachQueryHelper.FindFilesPerSearchQuery(searchQueryString, config.SaveDirPathYoutube));
             }
 
             List<string> tagsList = new List<string>();
@@ -98,22 +88,23 @@ namespace YoutubeDownloaderChecker.Managers
                         //Clean after one iteration
                         tagsList = new List<string>();
                         categoriesList = new List<string>();
-                        UpdateOrCreateMetadataHelper.UpdateOrCreateMetadataFromJsonToLocalDB(metadata, dataDirPath);
+                        UpdateOrCreateMetadataHelper.UpdateOrCreateMetadataFromJsonToLocalDB(metadata, config.DataDirPath);
                     }
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine("Json file cannot be read named: " + file + ". Ended with error " + e.Message);
+                    Console.WriteLine("\n Json file cannot be read named: " + file + ". Ended with error " + e.Message);
                 }
 
             }
 
             while (!processes.All(p => p.HasExited == true))
             {
-
+                //Here it will wait until all process for downloading videos has ended.
+                Task.Delay(10);
             }
 
-            Console.WriteLine("All videos has been successfuly downloaded and checked ");
+            Console.WriteLine("\n All videos has been successfuly downloaded and checked ");
         }
     }
 }

@@ -58,7 +58,7 @@ namespace YoutubeDownloaderChecker
         {
             executeDriver.Url = "https://facebook.com";
             var cookiesAccept = executeDriver.FindElementsByTagName("button");
-            cookiesAccept[1].Click();
+            cookiesAccept[0].Click();
             var cookiesSecondAccept = executeDriver.FindElementsByTagName("button");
             cookiesSecondAccept[4].Click();
             var emailElement = executeDriver.FindElementById("email");
