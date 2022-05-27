@@ -16,7 +16,8 @@ namespace YoutubeDownloaderChecker.Managers
         const string facebookUrlBase = "https://www.facebook.com/search/videos/?q=";
         
         const string youtubeSearchQuery = "/watch?v=";
-        const string facebookSearchQuery = @"/watch/live/?v=";
+        const string facebookSearchQuery = @"/watch/?ref=search&amp;v=";
+        const string facebookVideoAddQuery = @"/watch/?ref=search&v=";
         const string facebookEndPatern = @"&";
         //const string facebookSearchQuery = @"watch\/?ref=search&v=";
 
@@ -50,15 +51,15 @@ namespace YoutubeDownloaderChecker.Managers
                 {
                     //var newItem = new Tuple<string, int, int>(searchQuery, newLocation.Item2, newLocation.Item3);
                     //watchUrlLocations.Add(newItem);
-                    string watchUrl = facebookHtmlString.Substring(newLocation.Item1, newLocation.Item2 - newLocation.Item1);
+                    int length = newLocation.Item2 - newLocation.Item1;
+                    string watchUrl = facebookHtmlString.Substring(newLocation.Item1, length);
                     //string youtubeWatchUrl = "https://www.youtube.com" + watchUrl;
-                    string facebookWatchUrl = "https://www.facebook.com" + watchUrl /*"&q=" + searchQuery*/;
+                    string facebookWatchUrl = "https://www.facebook.com" + facebookVideoAddQuery + watchUrl; /*"&q=" + searchQuery*/
 
                     //Console.WriteLine(youtubeWatchUrl);
                     watchUrls.Add(new Tuple<string, string>(searchQuery, facebookWatchUrl));
                 }
             }
-            Console.ReadKey();
 
             foreach (var watchUrl in watchUrls)
             {

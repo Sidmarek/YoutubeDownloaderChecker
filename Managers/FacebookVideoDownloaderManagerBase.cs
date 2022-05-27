@@ -57,10 +57,22 @@ namespace YoutubeDownloaderChecker
         public static void LoginIntoFacebook(ChromeDriver executeDriver)
         {
             executeDriver.Url = "https://facebook.com";
-            var cookiesAccept = executeDriver.FindElementsByTagName("button");
-            cookiesAccept[0].Click();
-            var cookiesSecondAccept = executeDriver.FindElementsByTagName("button");
-            cookiesSecondAccept[4].Click();
+            var buttons = executeDriver.FindElementsByTagName("button");
+
+            foreach (var button in buttons)
+            {
+                var title = button.GetAttribute("title");
+                if (!string.IsNullOrEmpty(title))
+                {
+                    if (title.Contains("cookies"))
+                    {
+                        button.Click();
+                    }
+                }
+            }
+
+            //var cookiesSecondAccept = executeDriver.FindElementsByTagName("button");
+            //cookiesSecondAccept[4].Click();
             var emailElement = executeDriver.FindElementById("email");
             emailElement.Click();
             emailElement.SendKeys($"chodec.marek@gmail.com");

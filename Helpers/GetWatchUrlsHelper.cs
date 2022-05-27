@@ -15,9 +15,9 @@ namespace YoutubeDownloaderChecker.Helpers
             while (!endOfString)
             {
                 int newPositionStart = resultString.IndexOf(searchPattern, lastPosition);
-
                 if (newPositionStart != lastPosition && newPositionStart != -1)
                 {
+                    newPositionStart += searchPattern.Length;
                     lastPosition = newPositionStart;
                     //int newPositionEnd = resultString.IndexOf("&q=", lastPosition);
                     int newPositionEnd = resultString.IndexOf(endPattern, lastPosition);
