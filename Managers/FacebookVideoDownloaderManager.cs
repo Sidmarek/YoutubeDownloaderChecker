@@ -11,7 +11,7 @@ using YoutubeDownloaderChecker.Helpers;
 
 namespace YoutubeDownloaderChecker.Managers
 {
-    class FacebookVideoDownloaderManager : FacebookVideoDownloaderManagerBase
+    public class FacebookVideoDownloaderManager : FacebookVideoDownloaderManagerBase
     {
         const string facebookUrlBase = "https://www.facebook.com/search/videos/?q=";
         
@@ -23,18 +23,21 @@ namespace YoutubeDownloaderChecker.Managers
 
         private static List<Process> processes = new List<Process>();
 
-        private static string[] RequestQueries;
+        private static List<string> RequestQueries;
         private static ChromiumWebBrowser browser;
 
-        public static void GetFacebookVideos()
+        public static void GetFacebookVideos(List<string> keywords = null)
         {
             List<Tuple<string, int, int>> watchUrlLocations = new List<Tuple<string, int, int>>();
             List<Tuple<string, string>> watchUrls = new List<Tuple<string, string>>();
             int lastPosition = 0;
 
             var config = ReadConfigHelper.ReadConfig("config.txt");
-
-            var requestQueries = File.ReadAllLines(config.RequestDirPath);
+            
+            
+            List<string> requestQueries = new List<string>();
+            if (keywords == null)
+                requestQueries = File.ReadAllLines(config.RequestDirPath).ToList();
             RequestQueries = requestQueries;
 
             //Logs into the facebook via ChromeDriver

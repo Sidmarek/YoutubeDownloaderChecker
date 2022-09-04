@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace YoutubeDownloaderChecker
 {
-    class FacebookVideoDownloaderManagerBase
+    public class FacebookVideoDownloaderManagerBase
     {
         const string youTubeQueryBase = "https://www.youtube.com/results?search_query=";
 
