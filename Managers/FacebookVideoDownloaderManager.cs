@@ -17,7 +17,7 @@ namespace YoutubeDownloaderChecker.Managers
         
         const string youtubeSearchQuery = "/watch?v=";
         const string facebookSearchQuery = @"/watch/?ref=search&amp;v=";
-        const string facebookVideoAddQuery = @"/watch/?ref=search&v=";
+        const string facebookVideoAddQuery = @"/watch/?v=";
         const string facebookEndPatern = @"&";
         //const string facebookSearchQuery = @"watch\/?ref=search&v=";
 
@@ -33,15 +33,14 @@ namespace YoutubeDownloaderChecker.Managers
             int lastPosition = 0;
 
             var config = ReadConfigHelper.ReadConfig("config.txt");
-            
-            
+
+            var chromeDriver = new ChromeDriver();
             List<string> requestQueries = new List<string>();
             if (keywords == null)
                 requestQueries = File.ReadAllLines(config.RequestDirPath).ToList();
             RequestQueries = requestQueries;
 
             //Logs into the facebook via ChromeDriver
-            var chromeDriver = new ChromeDriver();
             LoginIntoFacebook(chromeDriver);
 
             foreach (string searchQuery in requestQueries)
